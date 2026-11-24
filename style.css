@@ -1208,3 +1208,359 @@ body::before {
 .empty-state p {
     font-size: 1rem;
 }
+
+/* ========== VOICE CONVERSATION ========== */
+.conversation-container {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.conversation-setup,
+.conversation-room {
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.96), rgba(22, 30, 48, 0.96));
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+}
+
+.conversation-intro {
+    max-width: 650px;
+    margin: 0 auto;
+    padding: clamp(28px, 6vw, 58px) clamp(20px, 5vw, 52px);
+    text-align: center;
+}
+
+.conversation-eyebrow {
+    display: inline-block;
+    margin-bottom: 10px;
+    color: var(--secondary-light);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+.conversation-intro h3,
+.conversation-room-header h3 {
+    margin-bottom: 12px;
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.conversation-intro > p {
+    margin-bottom: 28px;
+    color: var(--text-secondary);
+}
+
+.conversation-field {
+    display: block;
+    max-width: 480px;
+    margin: 0 auto 16px;
+    text-align: left;
+}
+
+.conversation-field > span {
+    display: block;
+    margin: 0 0 8px 4px;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.conversation-field select,
+.conversation-field input {
+    width: 100%;
+    min-height: 48px;
+    padding: 11px 15px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.conversation-field select:focus,
+.conversation-field input:focus {
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.14);
+}
+
+.conversation-options {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0 6px;
+}
+
+.conversation-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.conversation-switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.conversation-switch-track {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    border-radius: 20px;
+    background: var(--border);
+    transition: var(--transition);
+}
+
+.conversation-switch-track::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    content: '';
+    transition: var(--transition);
+}
+
+.conversation-switch input:checked + .conversation-switch-track {
+    background: var(--secondary);
+}
+
+.conversation-switch input:checked + .conversation-switch-track::after {
+    transform: translateX(16px);
+}
+
+.conversation-switch input:focus-visible + .conversation-switch-track {
+    outline: 2px solid white;
+    outline-offset: 3px;
+}
+
+.conversation-start-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+}
+
+.conversation-note {
+    max-width: 620px;
+    margin: 18px auto 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.conversation-room {
+    padding: clamp(18px, 4vw, 30px);
+}
+
+.conversation-room-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.conversation-room-header h3 {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+.conversation-room-header .conversation-eyebrow {
+    margin-bottom: 4px;
+}
+
+.conversation-end-btn,
+.conversation-stop-speaking {
+    padding: 9px 16px;
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.conversation-end-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.conversation-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.conversation-status-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.conversation-status.is-listening .conversation-status-dot {
+    background: var(--success);
+    box-shadow: 0 0 0 5px rgba(46, 204, 113, 0.12);
+    animation: conversationPulse 1.5s infinite;
+}
+
+.conversation-status.is-thinking .conversation-status-dot {
+    background: var(--accent);
+    animation: conversationPulse 0.8s infinite;
+}
+
+.conversation-status.is-speaking .conversation-status-dot {
+    background: var(--secondary-light);
+    animation: conversationPulse 0.8s infinite;
+}
+
+.conversation-status.is-error {
+    color: #ff9a9a;
+}
+
+.conversation-status.is-error .conversation-status-dot {
+    background: var(--danger);
+}
+
+@keyframes conversationPulse {
+    50% { opacity: 0.45; transform: scale(0.82); }
+}
+
+.conversation-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 220px;
+    max-height: min(52vh, 500px);
+    overflow-y: auto;
+    padding: 20px 4px;
+    scroll-behavior: smooth;
+}
+
+.conversation-message {
+    width: fit-content;
+    max-width: min(86%, 600px);
+    padding: 13px 16px;
+    border: 1px solid var(--border);
+    border-radius: 17px;
+    background: var(--bg-card);
+}
+
+.conversation-message-assistant {
+    align-self: flex-start;
+    border-top-left-radius: 5px;
+}
+
+.conversation-message-user {
+    align-self: flex-end;
+    border-color: rgba(74, 144, 217, 0.35);
+    border-top-right-radius: 5px;
+    background: rgba(74, 144, 217, 0.13);
+}
+
+.conversation-message-speaker {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-muted);
+    font-size: 0.73rem;
+    font-weight: 600;
+}
+
+.conversation-message-text {
+    color: var(--text-primary);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 1.08rem;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+}
+
+.conversation-live-transcript {
+    margin: 0 4px 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: rgba(245, 166, 35, 0.09);
+    color: var(--text-secondary);
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+.conversation-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.conversation-mic-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 190px;
+    min-height: 54px;
+    padding: 12px 23px;
+    border: 0;
+    border-radius: 50px;
+    background: linear-gradient(135deg, var(--secondary), #356eb6);
+    box-shadow: 0 7px 22px rgba(74, 144, 217, 0.24);
+    color: white;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.conversation-mic-btn:hover {
+    transform: translateY(-2px);
+}
+
+.conversation-mic-btn.is-listening {
+    background: linear-gradient(135deg, var(--danger), var(--primary-dark));
+    box-shadow: 0 0 0 6px rgba(231, 76, 60, 0.12);
+}
+
+.conversation-mic-icon {
+    font-size: 1.15rem;
+}
+
+.conversation-stop-speaking[hidden] {
+    display: none;
+}
+
+@media (max-width: 480px) {
+    .conversation-room-header {
+        align-items: flex-start;
+    }
+
+    .conversation-end-btn {
+        padding: 7px 12px;
+        font-size: 0.82rem;
+    }
+
+    .conversation-message {
+        max-width: 94%;
+    }
+
+    .conversation-message-text {
+        font-size: 1rem;
+    }
+}
+
+[hidden] {
+    display: none !important;
+}

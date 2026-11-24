@@ -82,6 +82,17 @@ let speedMatchIsPlaying = false;
 let speedMatchTotalTime = 90;
 let speedMatchBestRecords = JSON.parse(localStorage.getItem('speedMatchBestRecords') || '{}');
 
+// Conversation state
+let conversationRecognition = null;
+let conversationActive = false;
+let conversationIsRecognizing = false;
+let conversationIsProcessing = false;
+let conversationIsSpeaking = false;
+let conversationManualPause = false;
+let conversationApiUnavailable = false;
+let conversationRestartTimer = null;
+let conversationMessages = [];
+
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', () => {
     initNav();
@@ -90,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHeaderScrollBehavior();
     initQuizMode();
     initSpeedMatch();
+    initConversation();
     renderVocabGrid();
     updateFlashcard();
     updateProgress();
@@ -106,6 +118,9 @@ function initNav() {
 }
 
 function switchSection(section) {
+    if (currentSection === 'conversation' && section !== 'conversation' && conversationActive) {
+        endConversation(true);
+    }
     currentSection = section;
     
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -124,6 +139,10 @@ function switchSection(section) {
     }
     if (section === 'speedmatch') {
         initSpeedMatch();
+    }
+    if (section === 'conversation' && !conversationActive) {
+        document.getElementById('conversationSetup').hidden = false;
+        document.getElementById('conversationRoom').hidden = true;
     }
 }
 
@@ -883,4 +902,305 @@ function resetProgress() {
         renderVocabGrid();
         alert('Đã đặt lại tiến độ!');
     }
+}
+
+// ========== VOICE CONVERSATION ==========
+function initConversation() {
+    const topicSelect = document.getElementById('conversationTopic');
+    const customTopicWrap = document.getElementById('conversationCustomTopicWrap');
+    const startButton = document.getElementById('conversationStartBtn');
+    const micButton = document.getElementById('conversationMicBtn');
+    const endButton = document.getElementById('conversationEndBtn');
+    const stopSpeakingButton = document.getElementById('conversationStopSpeakingBtn');
+
+    topicSelect.addEventListener('change', () => {
+        customTopicWrap.hidden = topicSelect.value !== '自由なテーマ';
+    });
+    startButton.addEventListener('click', startConversation);
+    micButton.addEventListener('click', toggleConversationListening);
+    endButton.addEventListener('click', () => endConversation(true));
+    stopSpeakingButton.addEventListener('click', stopConversationSpeech);
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        document.getElementById('conversationSetupNote').textContent =
+            'Trình duyệt này chưa hỗ trợ nhận diện giọng nói. Hãy thử Chrome hoặc Edge trên HTTPS/localhost.';
+        startButton.disabled = true;
+        startButton.title = 'Trình duyệt chưa hỗ trợ Web Speech API';
+        return;
+    }
+
+    conversationRecognition = new SpeechRecognition();
+    conversationRecognition.lang = 'ja-JP';
+    conversationRecognition.continuous = false;
+    conversationRecognition.interimResults = true;
+    conversationRecognition.maxAlternatives = 1;
+
+    conversationRecognition.onstart = () => {
+        conversationIsRecognizing = true;
+        updateConversationMicButton();
+        setConversationStatus('Đang nghe bạn nói tiếng Nhật…', 'listening');
+    };
+
+    conversationRecognition.onresult = event => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let index = event.resultIndex; index < event.results.length; index++) {
+            const text = event.results[index][0].transcript;
+            if (event.results[index].isFinal) finalTranscript += text;
+            else interimTranscript += text;
+        }
+
+        const liveTranscript = document.getElementById('conversationLiveTranscript');
+        liveTranscript.textContent = interimTranscript ? `🎧 ${interimTranscript}` : '';
+        liveTranscript.hidden = !interimTranscript;
+
+        if (finalTranscript.trim()) {
+            void respondToConversation(finalTranscript.trim());
+        }
+    };
+
+    conversationRecognition.onerror = event => {
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            conversationManualPause = true;
+            setConversationStatus('Chưa được cấp quyền micro. Hãy cho phép micro trong cài đặt trình duyệt.', 'error');
+            return;
+        }
+        if (event.error === 'audio-capture') {
+            conversationManualPause = true;
+            setConversationStatus('Không tìm thấy micro. Hãy kiểm tra thiết bị âm thanh.', 'error');
+            return;
+        }
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            setConversationStatus('Micro gặp sự cố. Hãy thử bấm nút micro để nghe lại.', 'error');
+        }
+    };
+
+    conversationRecognition.onend = () => {
+        conversationIsRecognizing = false;
+        updateConversationMicButton();
+        if (!conversationActive || conversationIsProcessing || conversationIsSpeaking) return;
+
+        if (document.getElementById('conversationAutoListen').checked && !conversationManualPause) {
+            clearTimeout(conversationRestartTimer);
+            conversationRestartTimer = setTimeout(startConversationListening, 450);
+        } else if (!conversationManualPause) {
+            setConversationStatus('Đến lượt bạn. Bấm micro để nói.', '');
+        }
+    };
+}
+
+function startConversation() {
+    const selectedTopic = document.getElementById('conversationTopic').value;
+    const customTopic = document.getElementById('conversationCustomTopic').value.trim();
+    const topic = selectedTopic === '自由なテーマ' ? (customTopic || 'あなたの好きなこと') : selectedTopic;
+
+    conversationActive = true;
+    conversationIsProcessing = false;
+    conversationIsSpeaking = false;
+    conversationManualPause = false;
+    conversationApiUnavailable = false;
+    conversationMessages = [];
+
+    document.getElementById('conversationSetup').hidden = true;
+    document.getElementById('conversationRoom').hidden = false;
+    document.getElementById('conversationRoomTopic').textContent = topic;
+    document.getElementById('conversationMessages').replaceChildren();
+    document.getElementById('conversationLiveTranscript').hidden = true;
+    document.getElementById('conversationModeNote').hidden = true;
+    document.getElementById('conversationStopSpeakingBtn').hidden = true;
+    updateConversationMicButton();
+
+    const greeting = getConversationGreeting(topic);
+    addConversationMessage('assistant', greeting);
+    speakConversationText(greeting);
+}
+
+function getConversationGreeting(topic) {
+    const greetingByTopic = {
+        'カフェで注文する': 'いらっしゃいませ。ご注文はお決まりですか？',
+        '旅行と観光': '日本旅行について話しましょう。日本で行ってみたい場所はありますか？',
+        '趣味と休日': 'こんにちは！休日はいつも何をして過ごしますか？',
+        '日本の食べ物': '日本の食べ物について話しましょう。好きな日本料理は何ですか？',
+        '買い物': 'こんにちは！今日は何を買いに来ましたか？'
+    };
+    return greetingByTopic[topic] || `こんにちは！「${topic}」について話しましょう。まず、どんなことが好きですか？`;
+}
+
+function toggleConversationListening() {
+    if (!conversationActive || !conversationRecognition) return;
+    if (conversationIsRecognizing) {
+        conversationManualPause = true;
+        conversationRecognition.stop();
+        setConversationStatus('聞き取りを一時停止しました。再開するにはマイクを押してください。', '');
+        updateConversationMicButton();
+        return;
+    }
+
+    conversationManualPause = false;
+    startConversationListening();
+}
+
+function startConversationListening() {
+    if (!conversationActive || !conversationRecognition || conversationIsRecognizing ||
+        conversationIsProcessing || conversationIsSpeaking || conversationManualPause) return;
+    try {
+        conversationRecognition.start();
+    } catch (error) {
+        if (error.name !== 'InvalidStateError') {
+            setConversationStatus('Không thể bật micro. Hãy thử lại sau.', 'error');
+        }
+    }
+}
+
+async function respondToConversation(userText) {
+    if (conversationIsProcessing) return;
+    conversationIsProcessing = true;
+    document.getElementById('conversationLiveTranscript').hidden = true;
+    addConversationMessage('user', userText);
+    setConversationStatus('Đang nghĩ câu trả lời…', 'thinking');
+
+    let reply;
+    if (!conversationApiUnavailable) {
+        try {
+            const response = await fetch('/api/conversation/reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: document.getElementById('conversationRoomTopic').textContent,
+                    history: conversationMessages.slice(-12)
+                })
+            });
+            if (!response.ok) throw new Error(`Conversation API returned ${response.status}`);
+            const result = await response.json();
+            if (!result.reply || typeof result.reply !== 'string') throw new Error('Empty conversation reply');
+            reply = result.reply.trim();
+        } catch (error) {
+            conversationApiUnavailable = true;
+            const modeNote = document.getElementById('conversationModeNote');
+            modeNote.textContent = 'Đang dùng phản hồi cơ bản. Hãy cấu hình OPENAI_API_KEY và chạy ứng dụng qua máy chủ để trò chuyện AI tự nhiên hơn.';
+            modeNote.hidden = false;
+        }
+    }
+
+    if (!reply) reply = createLocalConversationReply(userText, document.getElementById('conversationRoomTopic').textContent);
+    addConversationMessage('assistant', reply);
+    conversationIsProcessing = false;
+    speakConversationText(reply);
+}
+
+function createLocalConversationReply(userText, topic) {
+    const text = userText.toLowerCase();
+    if (/こんにちは|こんばんは|おはよう|はじめまして/.test(text)) {
+        return 'こんにちは！お話しできてうれしいです。今日はどんな一日でしたか？';
+    }
+    if (/ありがとう|ありがと/.test(text)) {
+        return 'どういたしまして！こちらこそ、話してくれてありがとうございます。ほかにはどんなことが好きですか？';
+    }
+    if (/わかりません|分かりません|もう一度|ゆっくり/.test(text)) {
+        return 'もちろんです。ゆっくり話しますね。焦らなくて大丈夫ですよ。';
+    }
+    if (/はい|そうです|好きです|いいです/.test(text)) {
+        return 'そうなんですね！いいですね。いつから好きなんですか？';
+    }
+    if (/いいえ|ありません|好きじゃない/.test(text)) {
+        return 'そうなんですね。教えてくれてありがとうございます。では、最近興味があることはありますか？';
+    }
+    if (/\?|？|ですか|ますか|何|どこ|いつ|どうして/.test(text)) {
+        return `いい質問ですね！${topic}については、あなたはどう思いますか？`;
+    }
+
+    const followUps = [
+        'そうなんですね！もう少し聞かせてください。',
+        'いいですね！それについて、どんなところが一番好きですか？',
+        'なるほど。最近、そのことで何か楽しいことがありましたか？',
+        `面白いですね！${topic}について、ほかにも話したいことはありますか？`
+    ];
+    return followUps[Math.floor(Math.random() * followUps.length)];
+}
+
+function addConversationMessage(role, text) {
+    conversationMessages.push({ role, content: text });
+    const message = document.createElement('div');
+    message.className = `conversation-message ${role === 'user' ? 'conversation-message-user' : 'conversation-message-assistant'}`;
+
+    const speaker = document.createElement('span');
+    speaker.className = 'conversation-message-speaker';
+    speaker.textContent = role === 'user' ? 'あなた' : '日本語パートナー';
+    const content = document.createElement('p');
+    content.className = 'conversation-message-text';
+    content.lang = 'ja';
+    content.textContent = text;
+    message.append(speaker, content);
+    document.getElementById('conversationMessages').append(message);
+    message.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function speakConversationText(text) {
+    if (!conversationActive || !('speechSynthesis' in window)) {
+        conversationIsSpeaking = false;
+        if (conversationActive && document.getElementById('conversationAutoListen').checked && !conversationManualPause) {
+            startConversationListening();
+        }
+        return;
+    }
+
+    window.speechSynthesis.cancel();
+    conversationIsSpeaking = true;
+    setConversationStatus('Đang trả lời bằng giọng nói…', 'speaking');
+    document.getElementById('conversationStopSpeakingBtn').hidden = false;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ja-JP';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.onend = finishConversationSpeech;
+    utterance.onerror = finishConversationSpeech;
+    window.speechSynthesis.speak(utterance);
+}
+
+function finishConversationSpeech() {
+    conversationIsSpeaking = false;
+    document.getElementById('conversationStopSpeakingBtn').hidden = true;
+    if (!conversationActive) return;
+    if (document.getElementById('conversationAutoListen').checked && !conversationManualPause) {
+        startConversationListening();
+    } else {
+        setConversationStatus('Đến lượt bạn. Bấm micro để nói.', '');
+    }
+}
+
+function stopConversationSpeech() {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    finishConversationSpeech();
+}
+
+function setConversationStatus(text, state) {
+    const status = document.getElementById('conversationStatus');
+    status.classList.remove('is-listening', 'is-thinking', 'is-speaking', 'is-error');
+    if (state) status.classList.add(`is-${state}`);
+    document.getElementById('conversationStatusText').textContent = text;
+}
+
+function updateConversationMicButton() {
+    const button = document.getElementById('conversationMicBtn');
+    const label = document.getElementById('conversationMicLabel');
+    const listening = conversationIsRecognizing;
+    button.classList.toggle('is-listening', listening);
+    button.setAttribute('aria-label', listening ? 'Tạm dừng nghe' : 'Bắt đầu nghe');
+    label.textContent = listening ? 'Tạm dừng nghe' : (conversationManualPause ? 'Tiếp tục nghe' : 'Bắt đầu nghe');
+}
+
+function endConversation(returnToSetup) {
+    conversationActive = false;
+    conversationIsProcessing = false;
+    conversationIsSpeaking = false;
+    conversationManualPause = true;
+    clearTimeout(conversationRestartTimer);
+    if (conversationRecognition && conversationIsRecognizing) conversationRecognition.stop();
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    document.getElementById('conversationLiveTranscript').hidden = true;
+    document.getElementById('conversationStopSpeakingBtn').hidden = true;
+    document.getElementById('conversationRoom').hidden = true;
+    document.getElementById('conversationSetup').hidden = !returnToSetup;
+    updateConversationMicButton();
 }

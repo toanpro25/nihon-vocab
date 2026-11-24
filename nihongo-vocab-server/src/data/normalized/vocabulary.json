@@ -1,0 +1,34 @@
+{
+  "vocabulary": [
+    {
+      "id": 1,
+      "word": "こんにちは",
+      "meaning": "Hello",
+      "example": "こんにちは、元気ですか？"
+    },
+    {
+      "id": 2,
+      "word": "さようなら",
+      "meaning": "Goodbye",
+      "example": "さようなら、また会いましょう。"
+    },
+    {
+      "id": 3,
+      "word": "ありがとう",
+      "meaning": "Thank you",
+      "example": "ありがとう、助かりました。"
+    },
+    {
+      "id": 4,
+      "word": "はい",
+      "meaning": "Yes",
+      "example": "はい、そうです。"
+    },
+    {
+      "id": 5,
+      "word": "いいえ",
+      "meaning": "No",
+      "example": "いいえ、違います。"
+    }
+  ]
+}

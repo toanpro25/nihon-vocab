@@ -26,6 +26,7 @@
           <button class="nav-btn" data-section="flashcard">🃏 Flashcard</button>
           <button class="nav-btn" data-section="quiz">✍️ Kiểm tra</button>
           <button class="nav-btn" data-section="speedmatch">⚡ Game Vui</button>
+          <button class="nav-btn" data-section="conversation">🎙️ Hội thoại</button>
           <button class="nav-btn" data-section="progress">📊 Tiến độ</button>
         </nav>
       </div>
@@ -284,6 +285,70 @@
             <div class="result-percentage" id="speedMatchResultTime">0s</div>
             <div class="result-message" id="speedMatchResultMessage"></div>
             <button class="start-quiz-btn" onclick="resetSpeedMatch()">🔁 Chơi lại</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONVERSATION Section -->
+      <section id="conversation" class="section">
+        <h2 class="section-title">🎙️ Luyện hội thoại tiếng Nhật</h2>
+        <div class="conversation-container">
+          <div class="conversation-setup" id="conversationSetup">
+            <div class="conversation-intro">
+              <span class="conversation-eyebrow">日本語で話そう</span>
+              <h3>Nói chuyện tự nhiên bằng tiếng Nhật</h3>
+              <p>Chọn chủ đề, bật micro và trò chuyện bằng giọng nói. Hãy nói tiếng Nhật; trợ lý sẽ lắng nghe, phản hồi bằng tiếng Nhật và đọc câu trả lời thành tiếng.</p>
+              <label class="conversation-field" for="conversationTopic">
+                <span>Chủ đề trò chuyện</span>
+                <select id="conversationTopic">
+                  <option value="自己紹介と日常のこと">🙋 Tự giới thiệu & cuộc sống hằng ngày</option>
+                  <option value="カフェで注文する">☕ Gọi món ở quán cà phê</option>
+                  <option value="旅行と観光">🗾 Du lịch & tham quan Nhật Bản</option>
+                  <option value="趣味と休日">🎨 Sở thích & ngày nghỉ</option>
+                  <option value="日本の食べ物">🍣 Món ăn Nhật Bản</option>
+                  <option value="買い物">🛍️ Mua sắm</option>
+                  <option value="自由なテーマ">✨ Chủ đề tự do</option>
+                </select>
+              </label>
+              <label class="conversation-field" id="conversationCustomTopicWrap" for="conversationCustomTopic" hidden>
+                <span>Chủ đề bạn muốn nói</span>
+                <input id="conversationCustomTopic" type="text" maxlength="100" placeholder="Ví dụ: âm nhạc, công việc, anime..." />
+              </label>
+              <div class="conversation-options">
+                <label class="conversation-switch">
+                  <input id="conversationAutoListen" type="checkbox" checked />
+                  <span class="conversation-switch-track"></span>
+                  <span>Tự động nghe lượt tiếp theo</span>
+                </label>
+              </div>
+              <button class="start-quiz-btn conversation-start-btn" id="conversationStartBtn" type="button">🎙️ Bắt đầu trò chuyện</button>
+              <p class="conversation-note" id="conversationSetupNote">Micro chỉ hoạt động trên HTTPS hoặc localhost. Trình duyệt sẽ yêu cầu quyền truy cập micro.</p>
+            </div>
+          </div>
+
+          <div class="conversation-room" id="conversationRoom" hidden>
+            <div class="conversation-room-header">
+              <div>
+                <span class="conversation-eyebrow">CHỦ ĐỀ</span>
+                <h3 id="conversationRoomTopic">Tự giới thiệu</h3>
+              </div>
+              <button class="conversation-end-btn" id="conversationEndBtn" type="button">Kết thúc</button>
+            </div>
+            <div class="conversation-status" id="conversationStatus" role="status" aria-live="polite">
+              <span class="conversation-status-dot"></span>
+              <span id="conversationStatusText">Đang chuẩn bị...</span>
+            </div>
+            <p class="conversation-note conversation-mode-note" id="conversationModeNote" hidden></p>
+            <div class="conversation-messages" id="conversationMessages" aria-live="polite" aria-label="Nội dung hội thoại"></div>
+            <div class="conversation-live-transcript" id="conversationLiveTranscript" hidden></div>
+            <div class="conversation-controls">
+              <button class="conversation-mic-btn" id="conversationMicBtn" type="button" aria-label="Bắt đầu nghe">
+                <span class="conversation-mic-icon">🎙️</span>
+                <span id="conversationMicLabel">Bắt đầu nghe</span>
+              </button>
+              <button class="conversation-stop-speaking" id="conversationStopSpeakingBtn" type="button" hidden>⏸ Dừng đọc</button>
+            </div>
+            <p class="conversation-note">Mẹo: nói từng câu ngắn và chờ trợ lý trả lời. Bạn có thể tắt tự động nghe để tự bấm micro mỗi lượt.</p>
           </div>
         </div>
       </section>
