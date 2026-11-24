@@ -1,0 +1,1 @@
+// This file contains the raw vocabulary data in JavaScript format. It is the source data that will be converted.

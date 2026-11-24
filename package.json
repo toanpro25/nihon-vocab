@@ -1,0 +1,20 @@
+{
+  "name": "nihongo-vocab-server",
+  "version": "1.0.0",
+  "description": "A server project for managing and retrieving Japanese vocabulary data.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "convert": "node src/scripts/convert-vocab.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "body-parser": "^1.19.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "author": "Your Name",
+  "license": "MIT"
+}
